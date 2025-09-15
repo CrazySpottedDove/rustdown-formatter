@@ -46,6 +46,7 @@ impl<'a> Parser<'a> {
         current
     }
 
+    #[inline]
     fn peek(&self) -> Option<char> {
         self.current
     }
@@ -59,10 +60,12 @@ impl<'a> Parser<'a> {
         current_line.chars().all(char::is_whitespace) && self.current == Some('>')
     }
 
+    #[inline]
     fn take_slice(&self, start_byte: usize, end_byte: usize) -> &'a str {
         &self.input[start_byte..end_byte]
     }
 
+    #[inline]
     fn is_math_block_start(&self) -> bool {
         self.current == Some('$') && self.peek_next() == Some('$')
     }

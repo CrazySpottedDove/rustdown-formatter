@@ -1,15 +1,33 @@
 use crate::config::Config;
 use crate::parser::{Parser, Token};
 use anyhow::{Result, anyhow};
+use std::path::Path;
 use std::process::Command;
-
+use tex_fmt::args::Args;
+use tex_fmt::format::format_file;
+use tex_fmt::logging::Log;
 pub struct Formatter {
     config: Config,
+    latex_args: Args,
+    latex_logs: Vec<Log>,
 }
 
 impl Formatter {
     pub fn new(config: Config) -> Self {
-        Formatter { config }
+        Formatter {
+            config,
+            latex_args: Args::default(),
+            latex_logs: Vec::new(),
+        }
+    }
+    #[inline]
+    fn format_math(&mut self, text: &str) -> String {
+        format_file(
+            text,
+            Path::new("tex-fmt.log"),
+            &self.latex_args,
+            &mut self.latex_logs,
+        )
     }
 
     pub fn format(&mut self, input: &str) -> String {
@@ -18,7 +36,7 @@ impl Formatter {
         let mut result = String::with_capacity(input.len() * 6 / 5);
         let mut prev_token: Option<&Token> = None;
 
-        for (i, token) in tokens.iter().enumerate() {
+        for token in tokens.iter() {
             match token {
                 Token::Chinese(text) => {
                     // 处理中文与英文之间的空格
@@ -87,29 +105,21 @@ impl Formatter {
                         }
                     }
                     result.push('$');
-                    if self.config.format_math {
-                        result.push_str(&format_math(&self.config, text));
-                    } else {
-                        result.push_str(text.trim());
-                    }
+                    // if self.config.format_math {
+                    //     result.push_str(&self.format_math(&text));
+                    // } else {
+                    result.push_str(text.trim());
+                    // }
                     result.push('$');
                 }
                 Token::BlockMath(text) => {
                     ensure_empty_line(&mut result);
-                    result.push_str("$$");
-                    if !text.starts_with('\n') {
-                        result.push('\n');
-                    }
-                    if self.config.format_math {
-                        let formatted = format_math(&self.config, text).trim().to_string();
-                        result.push_str(&formatted);
-                    } else {
-                        result.push_str(text);
-                    }
-                    if !text.ends_with('\n') {
-                        result.push('\n');
-                    }
-                    result.push_str("$$");
+                    result.push_str("$$\n");
+
+                    let formatted = self.format_math(text).trim().to_string();
+                    result.push_str(&formatted);
+
+                    result.push_str("\n$$");
                     ensure_empty_line(&mut result);
                 }
                 Token::CodeBlock { language, content } => {
@@ -158,33 +168,27 @@ impl Formatter {
         }
         result
     }
-}
 
-fn format_math(config: &Config, text: &str) -> String {
-    if !config.format_math {
-        return text.to_string();
-    }
+    // let Some((cmd, args)) = get_formatter_command(config, "latex") else {
+    //     return text.to_string();
+    // };
 
-    let Some((cmd, args)) = get_formatter_command(config, "latex") else {
-        return text.to_string();
-    };
+    // let wrapped_content = format!("\\begin{{document}}\n{}\n\\end{{document}}", text);
 
-    let wrapped_content = format!("\\begin{{document}}\n{}\n\\end{{document}}", text);
-
-    match format_with_command(&cmd, &args, &wrapped_content) {
-        Ok(formatted) => {
-            if let Some(start) = formatted.find("\\begin{document}\n") {
-                if let Some(end) = formatted.find("\n\\end{document}") {
-                    return formatted[start + 16..end].trim().to_string();
-                }
-            }
-            text.to_string()
-        }
-        Err(e) => {
-            eprintln!("Failed to format math: {}", e);
-            text.to_string()
-        }
-    }
+    // match format_with_command(&cmd, &args, &wrapped_content) {
+    //     Ok(formatted) => {
+    //         if let Some(start) = formatted.find("\\begin{document}\n") {
+    //             if let Some(end) = formatted.find("\n\\end{document}") {
+    //                 return formatted[start + 16..end].trim().to_string();
+    //             }
+    //         }
+    //         text.to_string()
+    //     }
+    //     Err(e) => {
+    //         eprintln!("Failed to format math: {}", e);
+    //         text.to_string()
+    //     }
+    // }
 }
 
 fn get_formatter_command(config: &Config, language: &str) -> Option<(String, Vec<String>)> {

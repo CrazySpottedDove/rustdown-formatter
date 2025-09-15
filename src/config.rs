@@ -5,7 +5,6 @@ use std::collections::HashMap;
 pub struct Config{
     pub space_between_zh_and_en: bool,
     pub space_between_zh_and_num: bool,
-    pub format_math: bool,
     pub format_code_block: bool,
     pub space_between_code_and_text: bool,
     pub code_formatters: HashMap<String, String>,
@@ -33,7 +32,6 @@ impl Default for Config {
         Config {
             space_between_zh_and_en: true,
             space_between_zh_and_num: true,
-            format_math: false,
             format_code_block: true,
             space_between_code_and_text: true,
             code_formatters,

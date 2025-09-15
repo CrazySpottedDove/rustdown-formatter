@@ -36,7 +36,7 @@ fn main() -> io::Result<()> {
     // println!("读取文件耗时: {:?}", t2 - t1);
 
     // 格式化内容
-    let config = Config::default();
+    let config = Config::new();
     let mut formatter = Formatter::new(config);
     let formatted = formatter.format(&content);
     // let t3 = std::time::Instant::now();
