@@ -271,10 +271,22 @@ fn format_code_block(config: &Config, language: &str, content: &str) -> String {
 }
 
 fn ensure_empty_line(result: &mut String) {
-    while result.ends_with('\n') {
-        result.pop();
+    let bytes = result.as_bytes();
+    let mut newlines = 0;
+    let mut i = bytes.len();
+
+    while i > 0 && bytes[i - 1] == b'\n' {
+        newlines += 1;
+        i -= 1;
     }
-    result.push_str("\n\n");
+
+    match newlines {
+        0 => result.push_str("\n\n"),
+        1 => result.push('\n'),
+        _ => {
+            result.truncate(result.len() - (newlines - 2));
+        }
+    }
 }
 
 #[cfg(test)]
