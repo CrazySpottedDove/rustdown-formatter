@@ -1,0 +1,7 @@
+/target
+/extension/bin
+/extension/node_modules
+/extension/out
+/extension/dist
+indent.log
+/example

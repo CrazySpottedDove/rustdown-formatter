@@ -1,0 +1,18 @@
+[package]
+name = "rustdown-formatter"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1.0.99"
+serde = { version = "1.0.223", features = ["derive"] }
+serde_json = "1.0.145"
+
+[profile.release]
+opt-level = 3           # 最高优化级别
+lto = "fat"            # 启用全程序优化
+codegen-units = 1      # 减少并行编译单元以提高优化效果
+panic = "abort"        # 简化panic处理
+strip = true           # 移除调试信息
+debug = false          # 完全禁用调试信息
+incremental = false    # 禁用增量编译以获得更好的优化

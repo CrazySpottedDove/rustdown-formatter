@@ -1,0 +1,36 @@
+{
+	"name": "rustdown-formatter",
+	"displayName": "RustDown Formatter",
+	"description": "A Markdown formatter with Chinese support",
+	"version": "0.1.0",
+	"publisher": "your-publisher-name",
+	"engines": {
+		"vscode": "^1.60.0",
+		"node": "^14.0.0"
+	},
+	"categories": [
+		"Formatters"
+	],
+	"activationEvents": [
+		"onLanguage:markdown"
+	],
+	"main": "./out/extension.js",
+	"contributes": {
+		"commands": [
+			{
+				"command": "rustdown-formatter.format",
+				"title": "Format Markdown Document"
+			}
+		]
+	},
+	"scripts": {
+		"vscode:prepublish": "npm run compile",
+		"compile": "tsc -p ./",
+		"watch": "tsc -watch -p ./"
+	},
+	"devDependencies": {
+		"@types/node": "^16.11.7",
+		"@types/vscode": "^1.60.0",
+		"typescript": "^4.4.4"
+	}
+}
