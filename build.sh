@@ -17,3 +17,8 @@ npm install
 
 # 编译 TypeScript
 npm run compile
+
+# 打包插件
+npx vsce package
+
+cd ..

@@ -9,10 +9,7 @@ pub enum Token<'a> {
     InlineMath(&'a str),
     InlineCode(&'a str),
     BlockMath(&'a str),
-    CodeBlock {
-        language: &'a str,
-        content: &'a str
-    },
+    CodeBlock { language: &'a str, content: &'a str },
     NewLine,
 }
 
@@ -20,8 +17,9 @@ pub struct Parser<'a> {
     input: &'a str,
     chars: Chars<'a>,
     current: Option<char>,
-    byte_pos: usize,      // 字节位置
-    char_pos: usize,      // 字符位置
+    byte_pos: usize, // 字节位置
+    char_pos: usize, // 字符位置
+    inside_quote_block: bool,
 }
 
 impl<'a> Parser<'a> {
@@ -34,6 +32,7 @@ impl<'a> Parser<'a> {
             current,
             byte_pos: 0,
             char_pos: 0,
+            inside_quote_block: false,
         }
     }
 
@@ -51,8 +50,21 @@ impl<'a> Parser<'a> {
         self.current
     }
 
+    fn is_quote_start(&self) -> bool {
+        // 获取当前位置到行首的切片
+        let line_start = self.input[..self.byte_pos].rfind('\n').map_or(0, |n| n + 1);
+        let current_line = &self.input[line_start..self.byte_pos];
+
+        // 检查是否只包含空白字符，且当前字符是 >
+        current_line.chars().all(char::is_whitespace) && self.current == Some('>')
+    }
+
     fn take_slice(&self, start_byte: usize, end_byte: usize) -> &'a str {
         &self.input[start_byte..end_byte]
+    }
+
+    fn is_math_block_start(&self) -> bool {
+        self.current == Some('$') && self.peek_next() == Some('$')
     }
 
     pub fn parse(&mut self) -> Vec<Token<'a>> {
@@ -60,70 +72,150 @@ impl<'a> Parser<'a> {
         let mut start_byte = 0;
 
         while let Some(c) = self.peek() {
-            match c {
-                '$' => {
-                    // 如果有待处理的文本
-                    if self.byte_pos > start_byte {
-                        tokens.push(Token::Text(self.take_slice(start_byte, self.byte_pos)));
+            if self.is_quote_start() {
+                self.inside_quote_block = true;
+            } else if c == '\n' {
+                self.inside_quote_block = false;
+            }
+            if self.inside_quote_block {
+                match c {
+                    '$' => {
+                        if self.is_math_block_start() {
+                            self.next_char();
+                            self.next_char();
+                        } else {
+                            // 如果有待处理的文本
+                            if self.byte_pos > start_byte {
+                                tokens
+                                    .push(Token::Text(self.take_slice(start_byte, self.byte_pos)));
+                            }
+                            self.next_char(); // 消费 $
+
+                            let token = self.parse_inline_math();
+                            tokens.push(token);
+                            start_byte = self.byte_pos;
+                        }
                     }
-                    let token = if self.peek_next() == Some('$') {
-                        self.next_char(); // 消费第一个 $
-                        self.next_char(); // 消费第二个 $
-                        self.parse_block_math()
-                    } else {
-                        self.next_char(); // 消费 $
-                        self.parse_inline_math()
-                    };
-                    tokens.push(token);
-                    start_byte = self.byte_pos;
-                }
-                '`' => {
-                    if self.byte_pos > start_byte {
-                        tokens.push(Token::Text(self.take_slice(start_byte, self.byte_pos)));
+                    '`' if !self.is_code_block_start() => {
+                        if self.is_code_block_start() {
+                            self.next_char();
+                            self.next_char();
+                            self.next_char();
+                        } else {
+                            // 如果有待处理的文本
+                            if self.byte_pos > start_byte {
+                                tokens
+                                    .push(Token::Text(self.take_slice(start_byte, self.byte_pos)));
+                            }
+                            self.next_char(); // 消费 `
+
+                            let token = self.parse_inline_code();
+                            tokens.push(token);
+                            start_byte = self.byte_pos;
+                        }
                     }
-                    let token = if self.is_code_block_start() {
-                        self.parse_code_block()
-                    } else {
+                    '\n' => {
+                        if self.byte_pos > start_byte {
+                            tokens.push(Token::Text(self.take_slice(start_byte, self.byte_pos)));
+                        }
+                        tokens.push(Token::NewLine);
                         self.next_char();
-                        self.parse_inline_code()
-                    };
-                    tokens.push(token);
-                    start_byte = self.byte_pos;
-                }
-                '\n' => {
-                    if self.byte_pos > start_byte {
-                        tokens.push(Token::Text(self.take_slice(start_byte, self.byte_pos)));
+                        start_byte = self.byte_pos;
                     }
-                    tokens.push(Token::NewLine);
-                    self.next_char();
-                    start_byte = self.byte_pos;
-                }
-                c if c.is_ascii_alphabetic() => {
-                    if self.byte_pos > start_byte {
-                        tokens.push(Token::Text(self.take_slice(start_byte, self.byte_pos)));
+                    c if c.is_ascii_alphabetic() => {
+                        if self.byte_pos > start_byte {
+                            tokens.push(Token::Text(self.take_slice(start_byte, self.byte_pos)));
+                        }
+                        let token = self.parse_english();
+                        tokens.push(token);
+                        start_byte = self.byte_pos;
                     }
-                    let token = self.parse_english();
-                    tokens.push(token);
-                    start_byte = self.byte_pos;
-                }
-                c if c.is_ascii_digit() => {
-                    if self.byte_pos > start_byte {
-                        tokens.push(Token::Text(self.take_slice(start_byte, self.byte_pos)));
+                    c if c.is_ascii_digit() => {
+                        if self.byte_pos > start_byte {
+                            tokens.push(Token::Text(self.take_slice(start_byte, self.byte_pos)));
+                        }
+                        let token = self.parse_number();
+                        tokens.push(token);
+                        start_byte = self.byte_pos;
                     }
-                    let token = self.parse_number();
-                    tokens.push(token);
-                    start_byte = self.byte_pos;
-                }
-                c if is_chinese(c) => {
-                    if self.byte_pos > start_byte {
-                        tokens.push(Token::Text(self.take_slice(start_byte, self.byte_pos)));
+                    c if is_chinese(c) => {
+                        if self.byte_pos > start_byte {
+                            tokens.push(Token::Text(self.take_slice(start_byte, self.byte_pos)));
+                        }
+                        let token = self.parse_chinese();
+                        tokens.push(token);
+                        start_byte = self.byte_pos;
                     }
-                    let token = self.parse_chinese();
-                    tokens.push(token);
-                    start_byte = self.byte_pos;
+                    _ => {
+                        self.next_char();
+                    }
                 }
-                _ => {
-                    self.next_char();
+            } else {
+                match c {
+                    '$' => {
+                        // 如果有待处理的文本
+                        if self.byte_pos > start_byte {
+                            tokens.push(Token::Text(self.take_slice(start_byte, self.byte_pos)));
+                        }
+                        let token = if self.peek_next() == Some('$') {
+                            self.next_char(); // 消费第一个 $
+                            self.next_char(); // 消费第二个 $
+                            self.parse_block_math()
+                        } else {
+                            self.next_char(); // 消费 $
+                            self.parse_inline_math()
+                        };
+                        tokens.push(token);
+                        start_byte = self.byte_pos;
+                    }
+                    '`' => {
+                        if self.byte_pos > start_byte {
+                            tokens.push(Token::Text(self.take_slice(start_byte, self.byte_pos)));
+                        }
+                        let token = if self.is_code_block_start() {
+                            self.parse_code_block()
+                        } else {
+                            self.next_char();
+                            self.parse_inline_code()
+                        };
+                        tokens.push(token);
+                        start_byte = self.byte_pos;
+                    }
+                    '\n' => {
+                        if self.byte_pos > start_byte {
+                            tokens.push(Token::Text(self.take_slice(start_byte, self.byte_pos)));
+                        }
+                        tokens.push(Token::NewLine);
+                        self.next_char();
+                        start_byte = self.byte_pos;
+                    }
+                    c if c.is_ascii_alphabetic() => {
+                        if self.byte_pos > start_byte {
+                            tokens.push(Token::Text(self.take_slice(start_byte, self.byte_pos)));
+                        }
+                        let token = self.parse_english();
+                        tokens.push(token);
+                        start_byte = self.byte_pos;
+                    }
+                    c if c.is_ascii_digit() => {
+                        if self.byte_pos > start_byte {
+                            tokens.push(Token::Text(self.take_slice(start_byte, self.byte_pos)));
+                        }
+                        let token = self.parse_number();
+                        tokens.push(token);
+                        start_byte = self.byte_pos;
+                    }
+                    c if is_chinese(c) => {
+                        if self.byte_pos > start_byte {
+                            tokens.push(Token::Text(self.take_slice(start_byte, self.byte_pos)));
+                        }
+                        let token = self.parse_chinese();
+                        tokens.push(token);
+                        start_byte = self.byte_pos;
+                    }
+                    _ => {
+                        self.next_char();
+                    }
                 }
             }
         }
@@ -133,6 +225,16 @@ impl<'a> Parser<'a> {
             tokens.push(Token::Text(self.take_slice(start_byte, self.byte_pos)));
         }
 
+        // 如果是debug模式，将tokens解析情况写入一个测试文件中
+        #[cfg(debug_assertions)]
+        {
+            use std::fs::File;
+            use std::io::Write;
+            let mut file = File::create("debug_tokens.txt").unwrap();
+            for token in &tokens {
+                writeln!(file, "{:?}", token).unwrap();
+            }
+        }
         tokens
     }
 
@@ -142,9 +244,9 @@ impl<'a> Parser<'a> {
     }
 
     fn is_code_block_start(&self) -> bool {
-        self.current == Some('`') &&
-        self.peek_next() == Some('`') &&
-        self.chars.clone().nth(1) == Some('`')
+        self.current == Some('`')
+            && self.peek_next() == Some('`')
+            && self.chars.clone().nth(1) == Some('`')
     }
 
     fn parse_inline_math(&mut self) -> Token<'a> {
@@ -203,20 +305,19 @@ impl<'a> Parser<'a> {
                 self.next_char(); // 消费第三个 `
                 return Token::CodeBlock {
                     language: self.take_slice(lang_start, lang_end).trim(),
-                    content: self.take_slice(content_start, content_end)
+                    content: self.take_slice(content_start, content_end),
                 };
             }
         }
 
         Token::CodeBlock {
             language: self.take_slice(lang_start, lang_end).trim(),
-            content: self.take_slice(content_start, self.byte_pos)
+            content: self.take_slice(content_start, self.byte_pos),
         }
     }
 
     fn is_code_block_end(&self) -> bool {
-        self.peek_next() == Some('`') &&
-        self.chars.clone().nth(0) == Some('`')
+        self.peek_next() == Some('`') && self.chars.clone().nth(0) == Some('`')
     }
 
     fn parse_english(&mut self) -> Token<'a> {

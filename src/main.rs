@@ -46,7 +46,7 @@ fn main() -> io::Result<()> {
     let file = fs::File::create(path)?;
     let mut writer = BufWriter::new(file);
     writer.write_all(formatted.as_bytes())?;
-    writer.flush()?;  // 确保所有数据都写入文件
+    writer.flush()?; // 确保所有数据都写入文件
     // let t4 = std::time::Instant::now();
     // println!("写回文件耗时: {:?}", t4 - t3);
     Ok(())
