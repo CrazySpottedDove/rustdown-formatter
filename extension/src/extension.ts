@@ -3,62 +3,53 @@ import * as path from 'path';
 import * as child_process from 'child_process';
 
 export function activate(context: vscode.ExtensionContext) {
-    // 注册格式化提供程序
     let formatter = vscode.languages.registerDocumentFormattingEditProvider('markdown', {
-        provideDocumentFormattingEdits(document: vscode.TextDocument): vscode.TextEdit[] {
-            // 获取配置
-            const config = vscode.workspace.getConfiguration('rustdownFormatter');
-
-            // 创建临时配置文件
-            const formatterConfig = {
-                space_between_zh_and_en: config.get('spaceBetweenZhAndEn'),
-                space_between_zh_and_num: config.get('spaceBetweenZhAndNum'),
-                format_math: config.get('formatMath'),
-                format_code_block: config.get('formatCodeBlock'),
-                space_between_code_and_text: config.get('spaceBetweenCodeAndText'),
-                code_formatters: {
-                    "rust": "rustfmt",
-                    "javascript": "prettier",
-                    // ... 其他格式化工具配置
+        provideDocumentFormattingEdits(document: vscode.TextDocument): Promise<vscode.TextEdit[]> {
+            return new Promise((resolve, reject) => {
+                // 确保文件已保存
+                if (document.isDirty) {
+                    document.save().then(() => {
+                        formatFile(document, context, resolve, reject);
+                    });
+                } else {
+                    formatFile(document, context, resolve, reject);
                 }
-            };
+            });
+        }
+    });
 
-            // 调用 Rust 格式化工具
-            try {
-                const formatterPath = context.asAbsolutePath(path.join('bin', 'rustdown-formatter'));
-                const result = child_process.spawnSync(formatterPath, {
-                    input: document.getText(),
-                    encoding: 'utf-8'
-                });
+    context.subscriptions.push(formatter);
+}
 
-                if (result.error) {
-                    vscode.window.showErrorMessage(`格式化失败: ${result.error.message}`);
-                    return [];
-                }
+function formatFile(
+    document: vscode.TextDocument,
+    context: vscode.ExtensionContext,
+    resolve: (value: vscode.TextEdit[]) => void,
+    reject: (reason?: any) => void
+) {
+    const formatterPath = context.asAbsolutePath(path.join('bin', 'rustdown-formatter'));
 
-                return [vscode.TextEdit.replace(
-                    new vscode.Range(
-                        document.lineAt(0).range.start,
-                        document.lineAt(document.lineCount - 1).range.end
-                    ),
-                    result.stdout
-                )];
-            } catch (error) {
-                vscode.window.showErrorMessage(`格式化失败: ${error}`);
-                return [];
+    try {
+        // 直接传递文件路径给格式化工具
+        child_process.execFile(formatterPath, [document.fileName], (error, stdout, stderr) => {
+            if (error) {
+                vscode.window.showErrorMessage(`格式化失败: ${error.message}`);
+                reject(error);
+                return;
             }
-        }
-    });
 
-    // 注册命令
-    let command = vscode.commands.registerCommand('rustdown-formatter.format', () => {
-        const editor = vscode.window.activeTextEditor;
-        if (editor) {
-            vscode.commands.executeCommand('editor.action.formatDocument');
-        }
-    });
-
-    context.subscriptions.push(formatter, command);
+            // 读取文件获取更新后的内容
+            const formatted = document.getText();
+            const fullRange = new vscode.Range(
+                document.positionAt(0),
+                document.positionAt(document.getText().length)
+            );
+            resolve([vscode.TextEdit.replace(fullRange, formatted)]);
+        });
+    } catch (error) {
+        vscode.window.showErrorMessage(`格式化失败: ${error}`);
+        reject(error);
+    }
 }
 
 export function deactivate() { }
