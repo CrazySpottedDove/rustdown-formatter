@@ -22,12 +22,21 @@ impl Formatter {
     }
     #[inline]
     fn format_math(&mut self, text: &str) -> String {
-        format_file(
+        #[cfg(debug_assertions)]
+        {
+            eprintln!("[DEBUG] format_math: input = {:?}", text);
+        }
+        let formatted = format_file(
             text,
             Path::new("tex-fmt.log"),
             &self.latex_args,
             &mut self.latex_logs,
-        )
+        );
+        #[cfg(debug_assertions)]
+        {
+            eprintln!("[DEBUG] format_math: output = {:?}", formatted);
+        }
+        formatted
     }
 
     pub fn format(&mut self, input: &str) -> String {
@@ -105,14 +114,14 @@ impl Formatter {
                         }
                     }
                     result.push('$');
-                    // if self.config.format_math {
-                    //     result.push_str(&self.format_math(&text));
-                    // } else {
                     result.push_str(text.trim());
-                    // }
                     result.push('$');
                 }
                 Token::BlockMath(text) => {
+                    #[cfg(debug_assertions)]
+                    {
+                        eprintln!("[DEBUG] BlockMath detected: {:?}", text);
+                    }
                     ensure_empty_line(&mut result);
                     result.push_str("$$\n");
 
@@ -156,7 +165,7 @@ impl Formatter {
                     result.push('`');
                 }
                 Token::NewLine => {
-                    if !result.ends_with("\n\n") {
+                    if !result.ends_with("\n\n") && !result.ends_with("\r\n\r\n") && !result.ends_with("\r\n\n") && !result.ends_with("\n\r\n") {
                         result.push('\n');
                     }
                 }
@@ -184,10 +193,10 @@ fn get_formatter_command(config: &Config, language: &str) -> Option<(String, Vec
                     "markdown" | "md" => Some("markdown"),
                     _ => None,
                 };
-                static PRETTIER_ARGS: [&str; 2] = ["--parser", ""];
+
                 parser.map(|p| {
                     (
-                        PRETTIER_ARGS[0].to_string(),
+                        "prettier".to_string(),
                         vec!["--parser".to_string(), p.to_string()],
                     )
                 })
@@ -216,6 +225,11 @@ fn get_formatter_command(config: &Config, language: &str) -> Option<(String, Vec
 }
 
 fn format_with_command(cmd: &str, args: &[String], content: &str) -> Result<String> {
+    #[cfg(debug_assertions)]
+    {
+        eprintln!("[DEBUG] Try to run external formatter: {} {:?}", cmd, args);
+    }
+
     let mut child = Command::new(cmd)
         .args(args)
         .stdin(std::process::Stdio::piped())
@@ -229,18 +243,35 @@ fn format_with_command(cmd: &str, args: &[String], content: &str) -> Result<Stri
 
     let output = child.wait_with_output()?;
     if output.status.success() {
+        #[cfg(debug_assertions)]
+        {
+            eprintln!("[DEBUG] Formatter output: {}", String::from_utf8_lossy(&output.stdout));
+        }
         Ok(String::from_utf8(output.stdout)?)
     } else {
+        #[cfg(debug_assertions)]
+        {
+            eprintln!(
+                "[DEBUG] Formatter failed. Stderr: {}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+        }
         Err(anyhow!("formatter failed"))
     }
 }
 
-fn format_code_block(config: &Config, language: &str, content: &str) -> String {
-    if !config.format_code_block {
-        return content.to_string();
-    }
+// ...existing code...
 
+fn format_code_block(config: &Config, language: &str, content: &str) -> String {
+    #[cfg(debug_assertions)]
+    {
+        eprintln!("[DEBUG] format_code_block: language = {}, content = {:?}", language, &content[..content.len().min(60)]);
+    }
     let Some((cmd, args)) = get_formatter_command(config, language) else {
+        #[cfg(debug_assertions)]
+        {
+            eprintln!("[DEBUG] No formatter configured for language: {}", language);
+        }
         return content.to_string();
     };
 
@@ -254,7 +285,7 @@ fn format_code_block(config: &Config, language: &str, content: &str) -> String {
 }
 
 fn ensure_empty_line(result: &mut String) {
-    while result.ends_with('\n') {
+    while result.ends_with('\n') || result.ends_with('\r') {
         result.pop();
     }
     result.push_str("\n\n");

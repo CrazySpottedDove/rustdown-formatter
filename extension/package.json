@@ -6,8 +6,8 @@
 	],
 	"displayName": "RustDown Formatter",
 	"description": "A Markdown formatter with Chinese support",
-	"version": "0.1.0",
-	"publisher": "your-publisher-name",
+	"version": "0.1.1",
+	"publisher": "CrazySpottedDove",
 	"engines": {
 		"vscode": "^1.60.0",
 		"node": ">=14.0.0"
