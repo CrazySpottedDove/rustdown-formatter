@@ -134,7 +134,7 @@ impl Formatter {
                     } else {
                         result.push_str(content);
                     }
-                    if !content.ends_with('\n') {
+                    if !result.ends_with('\n') {
                         result.push('\n');
                     }
                     result.push_str("```");
@@ -168,27 +168,6 @@ impl Formatter {
         }
         result
     }
-
-    // let Some((cmd, args)) = get_formatter_command(config, "latex") else {
-    //     return text.to_string();
-    // };
-
-    // let wrapped_content = format!("\\begin{{document}}\n{}\n\\end{{document}}", text);
-
-    // match format_with_command(&cmd, &args, &wrapped_content) {
-    //     Ok(formatted) => {
-    //         if let Some(start) = formatted.find("\\begin{document}\n") {
-    //             if let Some(end) = formatted.find("\n\\end{document}") {
-    //                 return formatted[start + 16..end].trim().to_string();
-    //             }
-    //         }
-    //         text.to_string()
-    //     }
-    //     Err(e) => {
-    //         eprintln!("Failed to format math: {}", e);
-    //         text.to_string()
-    //     }
-    // }
 }
 
 fn get_formatter_command(config: &Config, language: &str) -> Option<(String, Vec<String>)> {

@@ -18,3 +18,7 @@ panic = "abort"        # 简化panic处理
 strip = true           # 移除调试信息
 debug = false          # 完全禁用调试信息
 incremental = false    # 禁用增量编译以获得更好的优化
+
+[target.x86_64-pc-windows-gnu]
+linker = "x86_64-w64-mingw32-gcc"
+ar = "x86_64-w64-mingw32-gcc-ar"

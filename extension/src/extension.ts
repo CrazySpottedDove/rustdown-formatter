@@ -21,13 +21,26 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(formatter);
 }
 
+function getFormatterPath(context: vscode.ExtensionContext): string {
+    const platform = process.platform;
+    const platformDir = platform === 'win32' ? 'win32' : 'linux';
+    const ext = platform === 'win32' ? '.exe' : '';
+
+    return path.join(
+        context.extensionPath,
+        'bin',
+        platformDir,
+        `rustdown-formatter${ext}`
+    );
+}
+
 function formatFile(
     document: vscode.TextDocument,
     context: vscode.ExtensionContext,
     resolve: (value: vscode.TextEdit[]) => void,
     reject: (reason?: any) => void
 ) {
-    const formatterPath = context.asAbsolutePath(path.join('bin', 'rustdown-formatter'));
+    const formatterPath = getFormatterPath(context);
 
     try {
         // 直接传递文件路径给格式化工具

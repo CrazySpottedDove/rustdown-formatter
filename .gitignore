@@ -7,3 +7,4 @@ indent.log
 /example
 /extension/rustdown-formatter-vscode-*.vsix
 debug_tokens.txt
+/dist
