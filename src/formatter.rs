@@ -165,7 +165,7 @@ impl Formatter {
                     result.push('`');
                 }
                 Token::NewLine => {
-                    if !result.ends_with("\n\n") && !result.ends_with("\r\n\r\n") && !result.ends_with("\r\n\n") && !result.ends_with("\n\r\n") {
+                    if !result.ends_with("\n\n") {
                         result.push('\n');
                     }
                 }
@@ -285,7 +285,7 @@ fn format_code_block(config: &Config, language: &str, content: &str) -> String {
 }
 
 fn ensure_empty_line(result: &mut String) {
-    while result.ends_with('\n') || result.ends_with('\r') {
+    while result.ends_with('\n') {
         result.pop();
     }
     result.push_str("\n\n");

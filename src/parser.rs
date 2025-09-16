@@ -117,6 +117,13 @@ impl<'a> Parser<'a> {
                             start_byte = self.byte_pos;
                         }
                     }
+                    '\r' =>{
+                        if self.byte_pos > start_byte {
+                            tokens.push(Token::Text(self.take_slice(start_byte, self.byte_pos)));
+                        }
+                        self.next_char(); // 忽略回车符
+                        start_byte = self.byte_pos;
+                    }
                     '\n' => {
                         if self.byte_pos > start_byte {
                             tokens.push(Token::Text(self.take_slice(start_byte, self.byte_pos)));
@@ -182,6 +189,13 @@ impl<'a> Parser<'a> {
                             self.parse_inline_code()
                         };
                         tokens.push(token);
+                        start_byte = self.byte_pos;
+                    }
+                    '\r' =>{
+                        if self.byte_pos > start_byte {
+                            tokens.push(Token::Text(self.take_slice(start_byte, self.byte_pos)));
+                        }
+                        self.next_char(); // 忽略回车符
                         start_byte = self.byte_pos;
                     }
                     '\n' => {
