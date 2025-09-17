@@ -1,10 +1,9 @@
 mod config;
 mod formatter;
 mod parser;
-
+mod pipeline;
 use config::Config;
-use formatter::Formatter;
-use parser::Parser;
+use pipeline::format_string;
 use std::env;
 use std::fs;
 use std::io::{self, BufReader, BufWriter, Read, Write};
@@ -28,30 +27,42 @@ fn main() -> io::Result<()> {
     }
 
     // 读取文件内容
-    // let t1 = std::time::Instant::now();
+    #[cfg(debug_assertions)]
+    let t1 = std::time::Instant::now();
+
     let file = fs::File::open(path)?;
     let mut reader = BufReader::new(file);
     let mut content = String::new();
     reader.read_to_string(&mut content)?;
-    // let t2 = std::time::Instant::now();
-    // println!("读取文件耗时: {:?}", t2 - t1);
+    #[cfg(debug_assertions)]
+    let t2 = std::time::Instant::now();
 
-    // 格式化内容
-    let mut parser = Parser::new(&content);
-    parser.parse();
-    let tokens = parser.get_tokens();
-    let config = Config::new();
-    let mut formatter = Formatter::new(&config);
-    let formatted = formatter.format(&tokens);
-    // let t3 = std::time::Instant::now();
-    // println!("格式化耗时: {:?}", t3 - t2);
+    let config = if let Ok(config_str) = std::env::var("RUSTDOWN_CONFIG") {
+        serde_json::from_str(&config_str).unwrap_or_else(|_| Config::default())
+    } else {
+        Config::default()
+    };
+    #[cfg(debug_assertions)]
+    let t3 = std::time::Instant::now();
+    let formatted = format_string(&content, &config);
+
+    #[cfg(debug_assertions)]
+    let t4 = std::time::Instant::now();
 
     // 使用缓冲写入
     let file = fs::File::create(path)?;
     let mut writer = BufWriter::new(file);
     writer.write_all(formatted.as_bytes())?;
     writer.flush()?; // 确保所有数据都写入文件
-    // let t4 = std::time::Instant::now();
-    // println!("写回文件耗时: {:?}", t4 - t3);
+
+    #[cfg(debug_assertions)]
+    let t5 = std::time::Instant::now();
+    #[cfg(debug_assertions)]
+    {
+        println!("读取文件耗时: {:?}", t2 - t1);
+        println!("解析配置耗时: {:?}", t3 - t2);
+        println!("格式化耗时: {:?}", t4 - t3);
+        println!("写回文件耗时: {:?}", t5 - t4);
+    }
     Ok(())
 }

@@ -6,7 +6,7 @@
 	],
 	"displayName": "RustDown Formatter",
 	"description": "A Markdown formatter with Chinese support",
-	"version": "0.1.3",
+	"version": "0.1.4",
 	"publisher": "CrazySpottedDove",
 	"engines": {
 		"vscode": "^1.60.0",
@@ -25,7 +25,61 @@
 				"command": "rustdown-formatter.format",
 				"title": "Format Markdown Document"
 			}
-		]
+		],
+        "configuration":{
+            "title": "Rustdown Formatter",
+            "properties": {
+                "rustdown-formatter.space_between_zh_and_en": {
+                    "type": "boolean",
+                    "default":"true",
+                    "description":"中英文之间是否自动插入空格"
+                },
+                "rustdown-formatter.space_between_zh_and_num": {
+                    "type": "boolean",
+                    "default":"true",
+                    "description":"中文与数字之间是否自动插入空格"
+                },
+                "rustdown-formatter.format_code_block": {
+                    "type": "boolean",
+                    "default":"true",
+                    "description":"是否格式化代码块内的内容"
+                },
+                "rustdown-formatter.code_formatters":{
+                    "type":"object",
+                    "default":{
+                        "rust":"rustfmt",
+                        "js":"prettier",
+                        "ts":"prettier",
+                        "css":"prettier",
+                        "scss":"prettier",
+                        "sass":"prettier",
+                        "less":"prettier",
+                        "html":"prettier",
+                        "json":"prettier",
+                        "yml":"prettier",
+                        "graphql":"prettier",
+                        "gql":"prettier",
+                        "vue":"prettier",
+                        "c":"clang-format",
+                        "cpp":"clang-format",
+                        "java":"clang-format",
+                        "go":"gofmt",
+                        "py":"black",
+                        "sh":"shfmt",
+                        "sql":"sqlfmt",
+                        "tf":"terraform",
+                        "lua":"stylua",
+                        "dart":"dartfmt",
+                        "php":"php-cs-fixer",
+                        "isort":"isort",
+                        "autopep8":"autopep8",
+                        "yapf":"yapf",
+                        "scala":"scalafmt",
+                        "kotlin":"ktfmt"
+                    }
+                }
+            }
+        }
 	},
 	"scripts": {
 		"vscode:prepublish": "npm run compile",

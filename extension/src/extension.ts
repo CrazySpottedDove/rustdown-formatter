@@ -41,10 +41,11 @@ function formatFile(
     reject: (reason?: any) => void
 ) {
     const formatterPath = getFormatterPath(context);
-
+    const config = vscode.workspace.getConfiguration('rustdown-formatter');
+    const configStr = JSON.stringify(config)
     try {
         // 直接传递文件路径给格式化工具
-        child_process.execFile(formatterPath, [document.fileName], (error, stdout, stderr) => {
+        child_process.execFile(formatterPath, [document.fileName],{env:{...process.env, RUSTDOWN_CONFIG: configStr}}, (error, stdout, stderr) => {
             if (error) {
                 vscode.window.showErrorMessage(`格式化失败: ${error.message}`);
                 reject(error);
