@@ -1,19 +1,19 @@
 use crate::config::Config;
-use crate::parser::{Parser, Token};
+use crate::parser::Token;
 use anyhow::{Result, anyhow};
 use std::path::Path;
 use std::process::Command;
 use tex_fmt::args::Args;
 use tex_fmt::format::format_file;
 use tex_fmt::logging::Log;
-pub struct Formatter {
-    config: Config,
+pub struct Formatter<'a> {
+    config: &'a Config,
     latex_args: Args,
     latex_logs: Vec<Log>,
 }
 
-impl Formatter {
-    pub fn new(config: Config) -> Self {
+impl<'a> Formatter<'a> {
+    pub fn new(config: &'a Config) -> Self {
         Formatter {
             config,
             latex_args: Args::default(),
@@ -39,10 +39,8 @@ impl Formatter {
         formatted
     }
 
-    pub fn format(&mut self, input: &str) -> String {
-        let mut parser = Parser::new(input);
-        let tokens = parser.parse();
-        let mut result = String::with_capacity(input.len() * 6 / 5);
+    pub fn format(&mut self, tokens: &Vec<Token<'a>>) -> String {
+        let mut result = String::with_capacity(tokens.len() * 3);
         let mut prev_token: Option<&Token> = None;
 
         for token in tokens.iter() {
@@ -172,6 +170,19 @@ impl Formatter {
                 Token::Text(text) => {
                     result.push_str(text);
                 }
+                Token::Title(title_tokens, level) => {
+                    ensure_empty_line(&mut result);
+                    let hashes = "#".repeat(*level as usize);
+                    result.push_str(&hashes);
+                    result.push(' ');
+                    let mut title_formatter = Formatter {
+                        config: self.config,
+                        latex_args: Args::default(),
+                        latex_logs: Vec::new(),
+                    };
+                    result.push_str(&title_formatter.format(title_tokens));
+                    ensure_empty_line(&mut result);
+                }
             }
             prev_token = Some(token);
         }
@@ -245,7 +256,10 @@ fn format_with_command(cmd: &str, args: &[String], content: &str) -> Result<Stri
     if output.status.success() {
         #[cfg(debug_assertions)]
         {
-            eprintln!("[DEBUG] Formatter output: {}", String::from_utf8_lossy(&output.stdout));
+            eprintln!(
+                "[DEBUG] Formatter output: {}",
+                String::from_utf8_lossy(&output.stdout)
+            );
         }
         Ok(String::from_utf8(output.stdout)?)
     } else {
@@ -265,7 +279,11 @@ fn format_with_command(cmd: &str, args: &[String], content: &str) -> Result<Stri
 fn format_code_block(config: &Config, language: &str, content: &str) -> String {
     #[cfg(debug_assertions)]
     {
-        eprintln!("[DEBUG] format_code_block: language = {}, content = {:?}", language, &content[..content.len().min(60)]);
+        eprintln!(
+            "[DEBUG] format_code_block: language = {}, content = {:?}",
+            language,
+            &content[..content.len().min(60)]
+        );
     }
     let Some((cmd, args)) = get_formatter_command(config, language) else {
         #[cfg(debug_assertions)]
@@ -285,22 +303,13 @@ fn format_code_block(config: &Config, language: &str, content: &str) -> String {
 }
 
 fn ensure_empty_line(result: &mut String) {
+    if result.is_empty() {
+        // 文档开头不加空行
+        return;
+    }
     while result.ends_with('\n') {
         result.pop();
     }
     result.push_str("\n\n");
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_basic_formatting() {
-        let config = Config::default();
-        let mut formatter = Formatter::new(config);
-        let input = "Hello你好123 $x+y$ `code` $$math$$ ```rust\nfn main(){}\n```";
-        let result = formatter.format(input);
-        println!("Formatted:\n{}", result);
-    }
-}

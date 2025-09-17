@@ -4,6 +4,7 @@ mod parser;
 
 use config::Config;
 use formatter::Formatter;
+use parser::Parser;
 use std::env;
 use std::fs;
 use std::io::{self, BufReader, BufWriter, Read, Write};
@@ -36,9 +37,12 @@ fn main() -> io::Result<()> {
     // println!("读取文件耗时: {:?}", t2 - t1);
 
     // 格式化内容
+    let mut parser = Parser::new(&content);
+    parser.parse();
+    let tokens = parser.get_tokens();
     let config = Config::new();
-    let mut formatter = Formatter::new(config);
-    let formatted = formatter.format(&content);
+    let mut formatter = Formatter::new(&config);
+    let formatted = formatter.format(&tokens);
     // let t3 = std::time::Instant::now();
     // println!("格式化耗时: {:?}", t3 - t2);
 
