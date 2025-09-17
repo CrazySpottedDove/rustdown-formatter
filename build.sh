@@ -26,5 +26,6 @@ cp "target/x86_64-pc-windows-gnu/release/rustdown-formatter.exe" "${PACK_DIR}/bi
 cd "${PACK_DIR}"
 npm install --ignore-scripts --no-audit --no-fund
 npm run compile
-npx vsce publish
+npx vsce package
+# npx vsce publish
 cd ..

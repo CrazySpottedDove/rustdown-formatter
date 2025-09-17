@@ -6,7 +6,7 @@
 	],
 	"displayName": "RustDown Formatter",
 	"description": "A Markdown formatter with Chinese support",
-	"version": "0.1.4",
+	"version": "0.1.5",
 	"publisher": "CrazySpottedDove",
 	"engines": {
 		"vscode": "^1.60.0",
@@ -76,7 +76,8 @@
                         "yapf":"yapf",
                         "scala":"scalafmt",
                         "kotlin":"ktfmt"
-                    }
+                    },
+                    "description": "配置不同语言使用的代码格式化工具（需确保这些工具已安装并添加到环境变量）"
                 }
             }
         }
